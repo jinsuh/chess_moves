@@ -1,26 +1,46 @@
 from abc import ABCMeta, abstractmethod
 
+"""
+Give all the possible moves from one player based on board information and who's turn it is
+Piece classes give possible moves from each piece
+Board info is a dictionary with keys, 'P1' and 'P2'
+Values are the pieces each player has
+
+Moves do not take into account castling or checks
+"""
+
+class Move(object):
+	"""Move class"""
+	def __init__(self, piece, position):
+		self.piece = piece
+		self.position = position
+
+	def __str__(self):
+		return str(self.piece) + str(self.position)
+
+
 class Piece:
 	__metaclass__ = ABCMeta
 
+	""" Piece class (Abstract) """
 	def __init__(self, position):
 		self.position = position
 
 	@abstractmethod
 	def __str__(self):
-		pass
+		""" Convert to string for readability """
 
 	@abstractmethod
 	def getPossibleMoves(self, boardSize, isP1Piece):
-		pass
+		""" Get all possible moves from this piece """
 
+	""" Check if piece position is out of bounds """
 	def outOfBounds(self, checkPosition, boardSize):
-		"""Check if piece position is out of bounds"""
 		return (checkPosition[0] >= boardSize or checkPosition[0] < 0
 			or checkPosition[1] >= boardSize or checkPosition[1] < 0)
 
+	""" Check if colliding with p1 or p2 pieces """
 	def hasCollision(self, checkPosition, boardInfo, checkP1Piece):
-		"""Check if colliding with p1 or p2 pieces"""
 		if checkP1Piece:
 			piecesToCheck = boardInfo['P1']
 		else:
@@ -31,32 +51,35 @@ class Piece:
 				return True
 		return False
 
+	"""Make sure move is valid"""
 	def isValidMove(self, checkPosition, boardInfo, isP1Piece):
 		return not (self.outOfBounds(checkPosition, boardInfo['boardSize']) or self.hasCollision(checkPosition, boardInfo, isP1Piece))
 
+	"""
+	Iterate through positions and add as possible move if valid
+	Positions are to be in a line
+	Stopped if blocked by own pieces or if capturing an enemy piece
+	"""
 	def setPossiblePositions(self, positions, boardInfo, isP1Piece):
-		"""Iterate through positions and add as possible move if valid
-		Positions are to be in a line
-		Stopped if blocked by own pieces or if capturing an enemy piece
-		"""
 		possibleMoves = []
 		for i in xrange(len(positions)):
 			if not self.isValidMove(positions[i], boardInfo, isP1Piece):
 				break
 			else:
-				possibleMoves.append(str(self) + str(positions[i]))
+				possibleMoves.append(Move(self, positions[i]))
 				if (self.hasCollision(positions[i], boardInfo, not isP1Piece)):
 					break;
 		return possibleMoves
 
+	"""
+	Iterates through all positions and add as possible move if valid
+	Does not stop if blocked by own pieces
+	"""
 	def setPossiblePositionsNoBlocking(self, positions, boardInfo, isP1Piece):
-		"""Iterates through all positions and add as possible move if valid
-		Does not stop if blocked by own pieces
-		"""
 		possibleMoves = []
 		for i in xrange(len(positions)):
 			if self.isValidMove(positions[i], boardInfo, isP1Piece):
-				possibleMoves.append(str(self) + str(positions[i]))
+				possibleMoves.append(Move(self, positions[i]))
 		return possibleMoves
 
 
@@ -64,6 +87,7 @@ class King(Piece):
 	def __str__(self):
 		return 'K'
 
+	""" Checks neighboring spaces """
 	def getPossibleMoves(self, boardInfo, isP1Piece):
 		possibleMoves = []
 		checkMoves = [(self.position[0] + row, self.position[1] + col) for row in xrange(-1, 2) for col in xrange(-1, 2) if not ((row == 0) and col == 0)]
@@ -74,21 +98,21 @@ class Queen(Piece):
 	def __str__(self):
 		return 'Q'
 
+	""" Checks union of Bishop + Rook moves """
 	def getPossibleMoves(self, boardInfo, isP1Piece):
-		""" Union of Bishop and Rook moves """
 		b = Bishop(self.position)
 		possibleMoves = b.getPossibleMoves(boardInfo, isP1Piece)
 		r = Rook(self.position)
 		possibleMoves.extend(r.getPossibleMoves(boardInfo, isP1Piece))
-		possibleMoves[:] = [str(self) + st[1:] for st in possibleMoves]
+		possibleMoves[:] = [Move(self, st.position) for st in possibleMoves]
 		return possibleMoves
 
 class Bishop(Piece):
 	def __str__(self):
 		return 'B'
 
+	""" Checks diagonal lines """
 	def getPossibleMoves(self, boardInfo, isP1Piece):
-		""" Checks each diagonal line """
 		boardSize = boardInfo['boardSize']
 		possibleMoves = []
 
@@ -110,8 +134,8 @@ class Knight(Piece):
 	def __str__(self):
 		return 'N'
 
+	""" Checks all possible L moves """
 	def getPossibleMoves(self, boardInfo, isP1Piece):
-		""" Checks all possible L moves """
 		possibleMoves = []
 		boardSize = boardInfo['boardSize']
 		toCheckPositions = []
@@ -130,8 +154,9 @@ class Rook(Piece):
 	def __str__(self):
 		return 'R'
 
+	""" Checks each horizontal/vertical line movement """
 	def getPossibleMoves(self, boardInfo, isP1Piece):
-		""" Checks each horizontal/vertical line movement """
+		
 		boardSize = boardInfo['boardSize']
 		possibleMoves = []
 
@@ -152,8 +177,8 @@ class Pawn(Piece):
 	def __str__(self):
 		return ''
 
+	""" Check forward movements and also diagonal attacking moves """
 	def getPossibleMoves(self, boardInfo, isP1Piece):
-		"""Check forward movements and also diagonal attacking moves"""
 		
 		# Determine if moving forward or "backwards" depending on player 1 or player 2
 		if (isP1Piece):
@@ -179,30 +204,31 @@ class Pawn(Piece):
 				possibleMoves.append(str(self) + str(position))
 		return possibleMoves
 
+	""" Check if pawn is at starting position """
 	def startingPosition(self, isP1Piece, boardInfo):
-		"""Check if pawn is at starting position"""
+		
 		if (isP1Piece):
 			return self.position[1] == 1
 		else:
 			return self.position[1] == boardInfo['boardSize'] - 2
 
 
+	""" Checks if there is no collision with any piece """
 	def isValidMove(self, checkPosition, boardInfo, isP1Piece):
-		"""Checks if there is no collision with any piece"""
 		return not (self.outOfBounds(checkPosition, boardInfo['boardSize']) or self.hasCollision(checkPosition, boardInfo, isP1Piece)) or self.hasCollision(checkPosition, boardInfo, not isP1Piece)
 
+	""" Checks the two forward possible positions and adds the moves if not blocked by any piece """
 	def setPossiblePositions(self, positions, boardInfo, isP1Piece):
-		"""Checks the two forward possible positions and adds the moves if not blocked by any piece"""
 		possibleMoves = []
 		for i in xrange(len(positions)):
 			if not self.isValidMove(positions[i], boardInfo, isP1Piece):
 				break
 			else:
-				possibleMoves.append(str(self) + str(positions[i]))
+				possibleMoves.append(Move(self, positions[i]))
 		return possibleMoves
 
+""" Iterate through all of players pieces and get all possible moves """
 def getAllPossibleMoves(boardInfo, isFirstPlayer):
-	"""Iterate through all of players pieces and get all possible moves"""
 	if isFirstPlayer:
 		pieces = boardInfo['P1']
 	else:
