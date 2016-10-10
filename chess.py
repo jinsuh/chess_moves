@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 """
-Give all the possible moves from one player based on board information and who's turn it is
+Give all the possible moves from one player based on board information and whose turn it is
 Piece classes give possible moves from each piece
 Board info is a dictionary with keys, 'P1' and 'P2'
 Values are the pieces each player has
